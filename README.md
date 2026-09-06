@@ -7,6 +7,12 @@
 
 **Стек:** React 18, TypeScript, Vite, Node.js, Express, SQLite (встроенный `node:sqlite`), без внешних зависимостей для паролей (scrypt из `node:crypto`).
 
+## Скриншоты
+
+![Task Manager — вход](docs/task-manager.png)
+
+![Task Manager — доска задач](docs/task-manager-2.png)
+
 ## Возможности
 
 - Регистрация и вход (пароль хэшируется scrypt + соль, поблочное сравнение — защита от timing-атак)
