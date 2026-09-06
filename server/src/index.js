@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { resolve } from 'node:path';
 import db from './db.js';
 import { hashPassword, verifyPassword, generateToken } from './auth.js';
 
@@ -9,7 +10,8 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// ---------- АУТЕНТИФИКАЦИЯ ----------
+// ---------- СТАТИКА (собранный React-клиент) ----------
+app.use(express.static('public'));
 
 // Регистрация
 app.post('/api/auth/register', (req, res) => {
@@ -160,6 +162,11 @@ function requireAuth(req, res, next) {
   req.token = token;
   next();
 }
+
+// SPA-фоллбэк: любой не-API маршрут отдаёт index.html (refresh / прямой ввод URL)
+app.get(/^\/(?!api).*/, (req, res) => {
+  res.sendFile(resolve('public', 'index.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`API on http://localhost:${PORT}`);
