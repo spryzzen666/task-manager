@@ -2,7 +2,10 @@
 
 Полноценное full-stack SPA: регистрация и вход, сессии, создание/редактирование/удаление задач, фильтры. Фронтенд на **React + TypeScript (Vite)**, бэкенд на **Node.js (Express)**, данные в **SQLite**.
 
-**Стек:** React 18, TypeScript, Vite, Node.js, Express, SQLite (встроенный `node:sqlite`), no внешних зависимостей для паролей (scrypt из `node:crypto`).
+**Живое демо:** https://task-manager-u5qh.onrender.com
+*(бесплатный тариф Render — при первом открытии сервис «просыпается» несколько секунд)*
+
+**Стек:** React 18, TypeScript, Vite, Node.js, Express, SQLite (встроенный `node:sqlite`), без внешних зависимостей для паролей (scrypt из `node:crypto`).
 
 ## Возможности
 
@@ -14,29 +17,37 @@
 - Состояния интерфейса: загрузка, пустой список, ошибки API
 - Адаптивная вёрстка, тёмная тема
 
-## Деплой
+## Деплой (один сервис на Render.com)
 
-**Backend — Render.com** (бесплатно):
+Проект спроектирован так, что **собранный React-клиент отдаётся прямо самим Express-сервером** — фронт и API живут на одном домене, деплой сводится к одному Web Service.
+
 1. Залей репозиторий на GitHub
-2. Render → New → Web Service → подключи GitHub-репозиторий
-3. Root Directory: `server`
-4. Build Command: `npm install`
-5. Start Command: `npm start`
-6. Создай. Адрес будет вида `https://task-manager-api.onrender.com`
+2. Render → **New → Web Service** → подключи GitHub-репозиторий `task-manager`
+3. **Root Directory:** `server`
+4. **Build Command:** `npm install`
+5. **Start Command:** `npm start`
+6. Create Web Service
 
-На бесплатном тарифе ненагруженный сервис засыпает через ~15 минут и просыпается при первом запросе — первые секунды загрузки могут быть медленными. База данных живёт в файле `server/src/taskmanager.db`, который на Render сбрасывается при редеплое (ок для учебного проекта). Заметка: Render ставит `PORT` сам, сервер уже читает `process.env.PORT`.
+Порядок сборки: клиент собирается командой `npm run build` (`client/`), `dist/` копируется в `server/public/`, а Express отдаёт его через `express.static` + SPA-фоллбэк. Render ставит `PORT` сам — сервер уже читает `process.env.PORT`.
 
-**Frontend — Vercel:**
-1. Открой настройки проекта на Vercel → Environment Variables
-2. Добавь `VITE_API_URL = https://task-manager-api.onrender.com` (адрес backend с `/api` не дописываем)
-3. Redeploy
+> На бесплатном тарифе ненагруженный сервис засыпает через ~15 минут и просыпается при первом запросе — первые секунды загрузки могут быть медленными. База данных живёт в файле `server/src/taskmanager.db`, который на Render сбрасывается при редеплое (ок для учебного проекта).
 
 ## Запуск (локально)
 
 Нужен Node.js **22.5+** (для встроенного `node:sqlite`).
 
-Терминал 1 — сервер:
+**Вариант A — быстрый (как в проде): собрать клиент в сервер**
 
+```bash
+cd client && npm install && npm run build   # соберёт client/dist
+cd ../server && npm install && npm run dev  # → http://localhost:4000
+```
+
+Открой http://localhost:4000 — сервер отдаст и фронт, и API.
+
+**Вариант B — разработка (Vite-proxy):**
+
+Терминал 1 — сервер:
 ```bash
 cd server
 npm install
@@ -44,14 +55,13 @@ npm run dev        # → http://localhost:4000
 ```
 
 Терминал 2 — фронтенд:
-
 ```bash
 cd client
 npm install
 npm run dev        # → http://localhost:5173
 ```
 
-Открой http://localhost:5173. Vite проксирует `/api` на сервер, так что CORS на фронтенде не нужен.
+Открой http://localhost:5173. Vite проксирует `/api` на сервер, CORS на фронтенде не нужен.
 
 База данных создаётся автоматически: `server/src/taskmanager.db`. Для сброса просто удали её.
 
@@ -61,12 +71,13 @@ npm run dev        # → http://localhost:5173
 task-manager/
 ├── client/                    # React + TypeScript (Vite)
 │   ├── index.html
-│   ├── vite.config.ts         # прокси /api → :4000
+│   ├── vite.config.ts         # прокси /api → :4000 (в dev)
 │   ├── tsconfig.json
 │   └── src/
 │       ├── main.tsx           # точка входа
 │       ├── App.tsx            # состояние приложения, сессия
 │       ├── types.ts           # общие типы (Task, User, Filter)
+│       ├── vite-env.d.ts      # типы Vite-переменных окружения
 │       ├── styles.css
 │       ├── api/
 │       │   └── client.ts      # fetch-обёртка над REST API
@@ -76,11 +87,13 @@ task-manager/
 │           └── TaskItem.tsx   # строка задачи (режим редактирования)
 ├── server/                    # Node.js + Express + SQLite
 │   ├── package.json
+│   ├── public/                # собранный клиент, отдаётся статикой (генерируется)
 │   └── src/
-│       ├── index.js           # роуты REST API + middleware
+│       ├── index.js           # REST API + раздача статики (express.static + SPA-фоллбэк)
 │       ├── db.js              # подключение SQLite, миграции
 │       └── auth.js            # scrypt-хэш, генерация токенов
 ├── docs/                      # скриншоты
+├── vercel.json                # (неактуально — деплой идёт через Render)
 └── .gitignore
 ```
 
@@ -101,6 +114,7 @@ task-manager/
 
 ## Ключевые решения
 
+- **Фронт + бэк на одном сервере** — Express отдаёт собранный React через `express.static` + SPA-фоллбэк: один домен, один деплой, ноль проблем с CORS
 - **`node:sqlite` вместо ORM** — ноль лишних зависимостей, чистый SQL в prepared statements (защита от SQL-инъекций)
 - **scrypt из `node:crypto`** — соль на каждый пароль, `timingSafeEqual` против timing-атак
 - **Сессии на токенах в таблице `sessions`** — вместо JWT проще для понимания и можно отозвать
@@ -110,7 +124,8 @@ task-manager/
 ## Кастомизация
 
 - Цвета — CSS-переменные в `client/src/styles.css`
-- Порт сервера — `PORT` в `server/src/index.js` (по умолч. 4000)
+- Порт сервера — `PORT` (по умолч. 4000)
 - Валидации — длина пароля в `server/src/index.js`
+- Адрес API в dev — см. `VITE_API_URL` в `client/src/api/client.ts` (локально не нужен: Vite проксирует `/api`)
 
 Создатель: Asankhan Dauletov
